@@ -62,7 +62,6 @@ ddl_planner_2/
 | GET | `/` | 前端页面 |
 | GET/POST | `/api/courses`, `/api/courses/<id>` | 课程表 |
 | POST | `/api/courses/batch` | 批量导入课程 |
-| POST | `/api/courses/ai-import` | 上传图片，AI 解析课程表 |
 | GET/POST | `/api/routines` | 作息管理 |
 | GET/POST | `/api/tasks` | 任务列表 / 添加任务（自动排期） |
 | GET | `/api/tasks/<id>` | 任务详情 + 步骤 |
