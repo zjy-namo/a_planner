@@ -1,5 +1,5 @@
 """
-规划助手 - Flask 后端
+一个规划助手 - Flask 后端
 包含 8 个 Agent：课程表Agent / 作息分析Agent / 任务拆解Agent / 排期Agent /
                  优先级Agent / 冲突检测Agent / 休息插入Agent / 汇总Agent
 """
