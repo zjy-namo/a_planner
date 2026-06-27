@@ -21,7 +21,8 @@ import requests
 load_dotenv()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_CHAT_URL = "https://api.deepseek.com/chat/completions"
-DEEPSEEK_VL_URL = "https://api.deepseek.com/chat/completions"  # DeepSeek VL 使用同一个 endpoint
+DEEPSEEK_VL_URL = "https://api.deepseek.com/chat/completions"  # DeepSeek 多模态使用同一 endpoint
+DEEPSEEK_VL_MODEL = "deepseek-chat"  # DeepSeek v2+ 支持图片
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "ddl_planner.db")
@@ -237,7 +238,7 @@ class CourseAgent:
         if current_week is not None:
             courses = [
                 c for c in courses
-                if is_week_active(c.get("weeks", "1-18"), current_week)
+                if is_week_active(c.get("weeks", "1-16"), current_week)
             ]
         return courses
 
@@ -788,26 +789,59 @@ def parse_json_from_text(text):
 
 def ai_analyze_image(base64_data):
     """调用 DeepSeek VL (若可用) 解析课程表图片；
-    由于 DeepSeek 官方公开文档中对多模态接口较新，这里采用视觉大模型通用提示，
-    若不可用则降级返回提示文字。"""
+    改进：按网格切分识别，支持多课程单元格，字段分离，周次识别"""
     if not DEEPSEEK_API_KEY:
         return None, "未配置 DEEPSEEK_API_KEY"
-    prompt = """你是一个课程表解析助手。请仔细分析图片中的课程表，提取每节课的：
-1. 课程名 (name)
-2. 星期 (day_of_week)：1=周一, 2=周二 ... 7=周日
-3. 开始时间 (start_time)：HH:MM 格式
-4. 结束时间 (end_time)：HH:MM 格式
-5. 地点 (location)
-6. 周数 (weeks)：格式为 "开始周-结束周"，如 "3-12" 表示第3-12周上课。
-   如果图片中有周次信息请提取，如"3-12周"、"1-14,17-18周"；如果图片未标注周次，默认返回 "1-16"。
+    
+    # 改进的 prompt：要求 AI 按网格切分识别
+    prompt = """你是一个专业的课程表解析助手。请仔细分析图片中的课程表结构。
 
-请严格只输出一个 JSON 数组，不要任何其他文字：
+【重要：分网格识别】
+课表通常是网格结构：横轴是星期（周一到周日），纵轴是节次/时间段。
+请按每个网格单元格逐一识别：
+- 如果某个单元格为空（无课程），跳过
+- 如果某个单元格有多个课程（堆叠），全部列出，用数组表示
+
+【字段分离要求】
+对每个网格中的文字，请区分并只提取以下字段：
+1. 课程名 (name)：只提取课程名称，忽略教师姓名
+2. 星期 (day_of_week)：1=周一, 2=周二, ..., 7=周日
+3. 时间段：
+   - 如果图片有明确时间（如"08:00-09:40"), 直接提取
+   - 如果只有节次（如"第1-2节"), 请转换为标准时间：
+     * 第1-2节 → 08:00-09:40
+     * 第3-4节 → 10:00-11:40
+     * 第5-6节 → 14:00-15:40
+     * 第7-8节 → 16:00-17:40
+     * 第9-10节 → 19:00-20:40
+4. 周次 (weeks)：
+   - 提取周次信息，格式为 "开始周-结束周"
+   - 如果有多个周次段（如"1-14周,17-18周"), 保留完整字符串
+   - 如果图片未标注周次，默认返回 "1-16"
+
+【忽略的信息】
+- 教师姓名（不要提取）
+- 教室/地点（可选提取到 location 字段）
+- 学分、班级等其他元数据
+
+【输出格式】
+严格输出一个 JSON 数组，不要任何其他文字：
+
+示例1（普通课表）：
 [
-  {"name":"高等数学","day_of_week":1,"start_time":"08:00","end_time":"09:40","location":"教1-201","weeks":"3-12"}
+  {"name":"高等数学","day_of_week":1,"start_time":"08:00","end_time":"09:40","weeks":"3-12","location":"教1-201"},
+  {"name":"大学英语","day_of_week":2,"start_time":"10:00","end_time":"11:40","weeks":"1-16","location":""}
 ]
+
+示例2（同一单元格有多个课程）：
+[
+  {"name":"高等数学","day_of_week":1,"start_time":"08:00","end_time":"09:40","weeks":"1-8","location":""},
+  {"name":"线性代数","day_of_week":1,"start_time":"08:00","end_time":"09:40","weeks":"9-16","location":""}
+]
+
+请严格按照上述格式输出。如果某个单元格无法识别，跳过即可。
 """
     try:
-        # 调用多模态（使用通义/OpenAI 兼容方式尝试）
         r = requests.post(
             DEEPSEEK_VL_URL,
             headers={
@@ -815,7 +849,7 @@ def ai_analyze_image(base64_data):
                 "Content-Type": "application/json",
             },
             json={
-                "model": "deepseek-chat",
+                "model": DEEPSEEK_VL_MODEL,
                 "messages": [
                     {
                         "role": "user",
@@ -828,9 +862,9 @@ def ai_analyze_image(base64_data):
                         ],
                     }
                 ],
-                "max_tokens": 2048,
+                "max_tokens": 4096,
             },
-            timeout=120,
+            timeout=180,
         )
         data = r.json()
         return data["choices"][0]["message"]["content"], None
@@ -911,9 +945,201 @@ def del_course(cid):
     return jsonify({"ok": True})
 
 
+def detect_course_conflicts(courses):
+    """检测课程冲突：同一时间段（星期+开始时间+结束时间）有多门课"""
+    conflicts = []
+    seen = {}
+    for i, c in enumerate(courses):
+        key = f"{c.get('day_of_week')}-{c.get('start_time')}-{c.get('end_time')}"
+        if key in seen:
+            conflicts.append({"index": i, "course": c, "conflicts_with": seen[key]})
+        else:
+            seen[key] = {"index": i, "course": c}
+    return conflicts
+
+
+def normalize_course_data(courses):
+    """标准化课程数据：补充缺失字段，修正格式"""
+    normalized = []
+    for c in courses:
+        # 补充缺失的周次
+        if not c.get("weeks"):
+            c["weeks"] = "1-16"
+        
+        # 确保时间段格式正确
+        if not c.get("start_time"):
+            c["start_time"] = "08:00"
+        if not c.get("end_time"):
+            c["end_time"] = "09:40"
+        
+        # 确保 day_of_week 是整数
+        if c.get("day_of_week"):
+            try:
+                c["day_of_week"] = int(c["day_of_week"])
+            except Exception:
+                c["day_of_week"] = 1
+        
+        # 确保 name 存在
+        if not c.get("name"):
+            c["name"] = "未命名课程"
+        
+        normalized.append(c)
+    return normalized
+
+
+@app.route("/api/courses/text-parse", methods=["POST"])
+def text_parse_courses():
+    """文本解析课程：从课表文本中提取结构化课程信息"""
+    data = request.get_json(force=True) or {}
+    text = data.get("text") or ""
+    if not text.strip():
+        return jsonify({"error": "文本内容为空"}), 400
+
+    if not DEEPSEEK_API_KEY:
+        return jsonify({"error": "未配置 DeepSeek API Key"}), 400
+
+    prompt = f"""你是课程表解析专家。请从以下课表文本中提取所有课程，返回严格的 JSON 数组。
+
+【输入文本】
+{text}
+
+【输出要求】
+只输出 JSON 数组，每个元素包含：
+- name: 课程名称（字符串）
+- day_of_week: 星期几（数字 1-7，1=周一）
+- start_time: 开始时间（HH:MM 格式）
+- end_time: 结束时间（HH:MM 格式）
+- weeks: 周次范围（字符串，如 "1-16" 或 "1-14,17-18"）
+- location: 教室/地点（字符串，没有则为空字符串）
+
+【周次识别规则】
+- "3-12周" → weeks: "3-12"
+- "1-14周,17-18周" → weeks: "1-14,17-18"
+- 没有周次信息 → weeks: "1-16"
+
+【节次转时间规则】
+- 第1-2节 / 一二节 → 08:00-09:40
+- 第3-4节 / 三四节 → 10:00-11:40
+- 第5-6节 / 五六节 → 14:00-15:40
+- 第7-8节 / 七八节 → 16:00-17:40
+- 第9-10节 / 九十节 → 19:00-20:40
+
+只返回 JSON 数组，不要任何其他文字、解释或 markdown 代码块。数组第一个字符必须是 [。"""
+
+    try:
+        r = requests.post(
+            DEEPSEEK_CHAT_URL,
+            headers={
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 2048,
+            },
+            timeout=60,
+        )
+        r.raise_for_status()
+        data = r.json()
+        content = data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return jsonify({"error": f"AI 调用失败: {str(e)}"}), 500
+
+    parsed = parse_json_from_text(content)
+    if not isinstance(parsed, list):
+        return jsonify({
+            "parsed": [],
+            "raw": content,
+            "warning": "AI 未能解析为结构化数组",
+            "success": False
+        })
+
+    normalized = normalize_course_data(parsed)
+    conflicts = detect_course_conflicts(normalized)
+
+    return jsonify({
+        "parsed": normalized,
+        "raw": content,
+        "conflicts": conflicts,
+        "has_conflicts": len(conflicts) > 0,
+        "success": True,
+        "total": len(normalized),
+    })
+
+
+@app.route("/api/courses/ai-preview", methods=["POST"])
+def ai_preview_course():
+    """识图预览：返回识别结果供前端展示，不直接导入"""
+    f = request.files.get("image")
+    if not f:
+        return jsonify({"error": "未上传图片"}), 400
+    raw = f.read()
+    b64 = base64.b64encode(raw).decode("utf-8")
+    content, err = ai_analyze_image(b64)
+    if err:
+        return jsonify({"error": err, "raw": content}), 400
+    
+    parsed = parse_json_from_text(content)
+    if not isinstance(parsed, list):
+        return jsonify({
+            "parsed": [],
+            "raw": content or "",
+            "warning": "AI 未能解析为结构化数组，请人工确认",
+            "success": False
+        })
+    
+    # 标准化数据
+    normalized = normalize_course_data(parsed)
+    
+    # 检测冲突
+    conflicts = detect_course_conflicts(normalized)
+    
+    return jsonify({
+        "parsed": normalized,
+        "raw": content,
+        "conflicts": conflicts,
+        "has_conflicts": len(conflicts) > 0,
+        "success": True,
+        "total": len(normalized),
+        "message": f"识别到 {len(normalized)} 门课程" + (f"，{len(conflicts)} 个时间冲突" if conflicts else "")
+    })
+
+
+@app.route("/api/courses/ai-confirm", methods=["POST"])
+def ai_confirm_course():
+    """确认导入：接收用户选择后的课程列表"""
+    data = request.get_json(force=True) or {}
+    courses = data.get("courses") or []
+    if not courses:
+        return jsonify({"error": "无课程数据"}), 400
+    
+    conn = get_conn()
+    for c in courses:
+        try:
+            weeks = c.get("weeks", "1-16")
+            conn.execute(
+                "INSERT INTO courses (name, day_of_week, start_time, end_time, location, weeks) VALUES (?,?,?,?,?,?)",
+                (
+                    str(c.get("name", "")),
+                    int(c.get("day_of_week", 1)),
+                    str(c.get("start_time", "08:00")),
+                    str(c.get("end_time", "09:00")),
+                    str(c.get("location", "")),
+                    weeks,
+                ),
+            )
+        except Exception as e:
+            pass
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "imported": len(courses)})
+
+
 @app.route("/api/courses/ai-import", methods=["POST"])
 def ai_import_course():
-    """识图导入课程表"""
+    """识图导入课程表（旧接口，直接导入，保留兼容）"""
     f = request.files.get("image")
     if not f:
         return jsonify({"error": "未上传图片"}), 400

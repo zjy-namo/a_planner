@@ -196,6 +196,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
       <div style="margin-top:12px"><button class="btn" id="btn-save-routine">保存作息</button></div>
     </div>
     <div class="card" style="margin-top:12px">
+      <div class="section-title" style="margin-top:0"><span>⏰ 课程作息时间</span><span class="muted">每节课的固定起止时间</span></div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px">AI 导入课程时可一键按节次匹配时间，也可在预览中批量调整</div>
+      <div id="course-time-list"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-secondary" id="btn-add-course-time">+ 添加节次</button>
+        <button class="btn btn-secondary" id="btn-reset-course-time">恢复默认</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
       <div class="section-title" style="margin-top:0"><span>📅 学期设置</span><span class="muted" id="semester-week-info"></span></div>
       <div class="settings-row"><span class="sr-label">学期开始日期</span><input type="date" id="sem-start"></div>
       <div class="settings-row"><span class="sr-label">手动设置当前周</span><input type="number" id="sem-week" min="1" max="30" value="1"></div>
@@ -211,7 +220,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
       <div id="course-list"></div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="btn" id="btn-add-course">+ 添加课程</button>
-        <button class="btn btn-secondary" id="btn-ai-course">🤖 AI识图导入</button>
+        <button class="btn btn-secondary" id="btn-ai-course">🤖 AI智能导入</button>
       </div>
       <input type="file" id="ai-course-file" accept="image/*" style="display:none">
     </div>
@@ -232,7 +241,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
   <button data-action="task">📋 添加任务</button>
   <button data-action="course">📅 添加课程</button>
   <button data-action="batch-course">📚 批量导入课程</button>
-  <button data-action="ai-course">🤖 AI识图导入课程</button>
+  <button data-action="ai-course">🤖 AI智能导入课程</button>
 </div>
 
 <button class="chat-fab" id="chat-fab">💬</button>
@@ -285,10 +294,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
         <div class="form-group"><label>开始</label><input type="time" id="c-start" value="08:00"></div>
         <div class="form-group"><label>结束</label><input type="time" id="c-end" value="09:40"></div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>开始周</label><input type="number" id="c-start-week" min="1" max="30" value="1" style="width:70px"></div>
-        <div class="form-group"><label>结束周</label><input type="number" id="c-end-week" min="1" max="30" value="16" style="width:70px"></div>
-        <div style="flex:1;font-size:12px;color:var(--sub);padding-top:6px;">留空为1-16周整学期</div>
+      <div class="form-group"><label>上课周数</label>
+        <input type="text" id="c-weeks" placeholder="例如：1-16 或 1-14,17-18" value="1-16">
+        <div style="font-size:12px;color:var(--sub);padding-top:4px;">格式："1-16"表示第1-16周；"1-14,17-18"表示多段周次</div>
       </div>
       <div class="form-group"><label>地点（可选）</label><input type="text" id="c-loc" placeholder="教1-201"></div>
     </div>
@@ -301,22 +309,72 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
     <div class="modal-head"><span>📚 批量导入课程</span><button class="x" data-close>×</button></div>
     <div class="modal-body">
       <div class="form-group"><label>课程名称</label><input type="text" id="bc-name" placeholder="例如：高等数学"></div>
-      <div class="form-row">
-        <div class="form-group"><label>上课周数（默认1-16周）</label></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>开始周</label><input type="number" id="bc-start-week" min="1" max="30" value="1" style="width:70px"></div>
-        <div class="form-group"><label>结束周</label><input type="number" id="bc-end-week" min="1" max="30" value="16" style="width:70px"></div>
+      <div class="form-group"><label>上课周数</label>
+        <input type="text" id="bc-weeks" placeholder="例如：1-16 或 1-14,17-18" value="1-16">
+        <div style="font-size:12px;color:var(--sub);padding-top:4px;">格式："1-16"表示第1-16周；"1-14,17-18"表示多段周次</div>
       </div>
       <div class="form-group"><label>上课时段（可添加多个）</label><div id="bc-slots"></div>
         <button class="btn btn-secondary" id="bc-add-slot" style="margin-top:8px">+ 增加一个时段</button>
       </div>
       <div class="form-group"><label style="font-size:12px;color:var(--sub)">批量格式示例：</label>
         <div style="font-size:12px;color:var(--sub)">• 高数：周一1-2节（3-12周）</div>
-        <div style="font-size:12px;color:var(--sub)">• 英语：周二3-4节（1-16周）</div>
+        <div style="font-size:12px;color:var(--sub)">• 英语：周二3-4节（1-14,17-18周）</div>
       </div>
     </div>
     <div class="modal-foot"><button class="btn btn-secondary" data-close>取消</button><button class="btn" id="btn-save-batch">全部保存</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-ai-import">
+  <div class="modal-card" style="max-width:500px">
+    <div class="modal-head"><span>🤖 AI智能导入课程表</span><button class="x" data-close>×</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--sub);margin-bottom:12px">粘贴课表文本，AI 自动识别课程信息</p>
+      <textarea id="ai-course-text" rows="10" placeholder="请粘贴课程表文本，例如：
+
+周一 第1-2节 高等数学 3-12周 教101
+周二 第3-4节 大学英语 1-16周 外语楼203
+周四 第5-6节 体育 3-12周 体育场
+周五 第7-8节 线性代数 1-14,17-18周 理科楼305" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical"></textarea>
+      <button class="btn" id="btn-ai-parse" style="width:100%;margin-top:12px">🤖 AI智能解析</button>
+      <div id="ai-parse-loading" style="display:none;text-align:center;padding:20px;color:var(--sub)">
+        <div>🤖 AI 正在解析，请稍候...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-ai-preview">
+  <div class="modal-card" style="max-width:600px">
+    <div class="modal-head"><span>🤖 AI 识别结果预览</span><button class="x" data-close>×</button></div>
+    <div class="modal-body">
+      <div id="ai-preview-info" style="font-size:13px;color:var(--sub);margin-bottom:12px"></div>
+      <div id="ai-conflicts-warning" style="display:none;background:#FEF3C7;padding:10px;border-radius:8px;margin-bottom:12px;font-size:13px;color:#92400E"></div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn btn-secondary" id="btn-batch-period" style="font-size:12px;padding:6px 10px">📘 按节次应用</button>
+        <button class="btn btn-secondary" id="btn-batch-shift-left" style="font-size:12px;padding:6px 10px">⬅️ 提前10分</button>
+        <button class="btn btn-secondary" id="btn-batch-shift-right" style="font-size:12px;padding:6px 10px">➡️ 延后10分</button>
+        <button class="btn btn-secondary" id="btn-batch-reset" style="font-size:12px;padding:6px 10px">↩️ 撤销</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="ai-preview-table" style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#F3F4F6">
+              <th style="padding:8px;border:1px solid #E5E7EB;text-align:left;width:40px"><input type="checkbox" id="ai-check-all" checked></th>
+              <th style="padding:8px;border:1px solid #E5E7EB;text-align:left">课程名</th>
+              <th style="padding:8px;border:1px solid #E5E7EB;text-align:left">星期</th>
+              <th style="padding:8px;border:1px solid #E5E7EB;text-align:left">时间</th>
+              <th style="padding:8px;border:1px solid #E5E7EB;text-align:left">周次</th>
+              <th style="padding:8px;border:1px solid #E5E7EB;text-align:left">地点</th>
+            </tr>
+          </thead>
+          <tbody id="ai-preview-tbody"></tbody>
+        </table>
+      </div>
+      <div id="ai-raw-text" style="display:none;margin-top:12px;font-size:12px;color:var(--sub);max-height:200px;overflow-y:auto;background:#F9FAFB;padding:10px;border-radius:8px"></div>
+      <button class="btn btn-secondary" id="btn-show-raw" style="margin-top:8px">查看原始识别文本</button>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" data-close>取消</button><button class="btn" id="btn-confirm-ai">确认导入</button></div>
   </div>
 </div>
 
@@ -368,7 +426,7 @@ $$("#fab-menu button").forEach(b=>b.addEventListener("click",()=>{
   if(a==="task") openTaskModal();
   if(a==="course") openCourseModal();
   if(a==="batch-course") openBatchCourseModal();
-  if(a==="ai-course") $("#ai-course-file").click();
+  if(a==="ai-course") openAiImportModal();
 }));
 
 let taskSteps = [];
@@ -407,13 +465,11 @@ $("#btn-save-task").addEventListener("click",async ()=>{
   else notify("保存失败","error");
 });
 
-function openCourseModal(){ $("#c-name").value=""; $("#c-start").value="08:00"; $("#c-end").value="09:40"; $("#c-loc").value=""; $("#c-start-week").value=1; $("#c-end-week").value=16; showModal("modal-course"); }
+function openCourseModal(){ $("#c-name").value=""; $("#c-start").value="08:00"; $("#c-end").value="09:40"; $("#c-loc").value=""; $("#c-weeks").value="1-16"; showModal("modal-course"); }
 $("#btn-add-course").addEventListener("click",openCourseModal);
 $("#btn-save-course").addEventListener("click",async ()=>{
   const name = $("#c-name").value.trim(); if(!name){ notify("请填写课程名","error"); return; }
-  const sw = parseInt($("#c-start-week").value) || 1;
-  const ew = parseInt($("#c-end-week").value) || 16;
-  const weeks = `${sw}-${ew}`;
+  const weeks = $("#c-weeks").value.trim() || "1-16";
   await jsonReq("/api/courses",{method:"POST",body:JSON.stringify({name,day_of_week:parseInt($("#c-day").value),start_time:$("#c-start").value,end_time:$("#c-end").value,location:$("#c-loc").value,weeks})});
   notify("已添加课程"); closeModal("modal-course"); refreshAll();
 });
@@ -421,7 +477,7 @@ $("#btn-save-course").addEventListener("click",async ()=>{
 let batchSlots=[];
 function openBatchCourseModal(){
   batchSlots=[{day_of_week:1,start_time:"08:00",end_time:"09:40",location:""},{day_of_week:3,start_time:"10:00",end_time:"11:40",location:""}];
-  $("#bc-name").value=""; $("#bc-start-week").value=1; $("#bc-end-week").value=16; renderBatchSlots(); showModal("modal-batch-course");
+  $("#bc-name").value=""; $("#bc-weeks").value="1-16"; renderBatchSlots(); showModal("modal-batch-course");
 }
 function renderBatchSlots(){
   const box=$("#bc-slots"); box.innerHTML="";
@@ -447,25 +503,185 @@ function renderBatchSlots(){
 $("#bc-add-slot").addEventListener("click",()=>{batchSlots.push({day_of_week:1,start_time:"08:00",end_time:"09:40",location:""});renderBatchSlots();});
 $("#btn-save-batch").addEventListener("click",async ()=>{
   const name=$("#bc-name").value.trim(); if(!name){ notify("请填写课程名","error"); return; }
-  const sw=parseInt($("#bc-start-week").value)||1;
-  const ew=parseInt($("#bc-end-week").value)||16;
-  const weeks=`${sw}-${ew}`;
+  const weeks=$("#bc-weeks").value.trim()||"1-16";
   await jsonReq("/api/courses/batch",{method:"POST",body:JSON.stringify({items:[{name,weeks,days:batchSlots}]})});
   notify("批量导入成功"); closeModal("modal-batch-course"); refreshAll();
 });
 
-$("#btn-ai-course").addEventListener("click",()=>$("#ai-course-file").click());
-$("#ai-course-file").addEventListener("change",async (e)=>{
-  const f=e.target.files[0]; if(!f) return;
-  const fd=new FormData(); fd.append("image",f); notify("正在识别课表图片...");
-  try{
-    const r=await fetch("/api/courses/ai-import",{method:"POST",body:fd});
-    const data=await r.json();
-    if(data.parsed && data.parsed.length) notify("识别到 "+data.parsed.length+" 节课程");
-    else notify("未能识别出结构化课程","error");
-    refreshAll();
-  }catch(err){ notify("上传失败: "+err,"error"); }
-  e.target.value="";
+$("#btn-ai-course").addEventListener("click", openAiImportModal);
+
+let aiPreviewData = [];
+
+function openAiImportModal() {
+  showModal("modal-ai-import");
+}
+
+$("#btn-ai-parse").addEventListener("click", async () => {
+  const text = $("#ai-course-text").value;
+
+  if (!text.trim()) { notify('请输入课表文本', 'error'); return; }
+
+  $("#ai-parse-loading").style.display = 'block';
+  $("#btn-ai-parse").disabled = true;
+
+  try {
+    const data = await jsonReq("/api/courses/text-parse", {
+      method: "POST",
+      body: JSON.stringify({ text })
+    });
+
+    if (data.success) {
+      aiPreviewData = data.parsed || [];
+      renderAiPreview(data);
+      closeModal("modal-ai-import");
+      showModal("modal-ai-preview");
+      notify(`识别到 ${aiPreviewData.length} 门课程`);
+    } else {
+      notify(data.warning || data.error || "解析失败", "error");
+    }
+  } catch (err) {
+    notify("请求失败: " + err, "error");
+  } finally {
+    $("#ai-parse-loading").style.display = 'none';
+    $("#btn-ai-parse").disabled = false;
+  }
+});
+
+function renderAiPreview(data){
+  const wd=["","周一","周二","周三","周四","周五","周六","周日"];
+  const tbody=$("#ai-preview-tbody"); tbody.innerHTML="";
+  $("#ai-preview-info").textContent=`识别到 ${data.total||data.parsed.length} 门课程（可直接点击修改）`;
+
+  // 显示冲突警告
+  if(data.has_conflicts){
+    $("#ai-conflicts-warning").style.display="block";
+    $("#ai-conflicts-warning").innerHTML=`⚠️ 检测到 ${data.conflicts.length} 个时间冲突（同一时间段有多门课），请手动选择保留哪些课程`;
+  }else{
+    $("#ai-conflicts-warning").style.display="none";
+  }
+
+  // 显示原始文本
+  $("#ai-raw-text").textContent=data.raw||"";
+
+  aiPreviewData = data.parsed.map(c => ({...c, _checked: true}));
+
+  data.parsed.forEach((c,idx)=>{
+    const tr=document.createElement("tr");
+    if(data.conflicts&&data.conflicts.some(conf=>conf.index===idx)){
+      tr.style.background="#FEF3C7";
+    }
+    tr.innerHTML=`
+      <td style="padding:6px;border:1px solid #E5E7EB"><input type="checkbox" class="ai-course-check" data-idx="${idx}" checked></td>
+      <td style="padding:4px;border:1px solid #E5E7EB"><input type="text" class="ai-edit-name" data-idx="${idx}" value="${(c.name||"").replace(/"/g,'&quot;')}" style="width:100%;padding:4px 6px;border:1px solid #D1D5DB;border-radius:4px;font-size:12px;font-weight:600"></td>
+      <td style="padding:4px;border:1px solid #E5E7EB">
+        <select class="ai-edit-day" data-idx="${idx}" style="width:100%;padding:4px;border:1px solid #D1D5DB;border-radius:4px;font-size:12px">
+          <option value="1">周一</option>
+          <option value="2">周二</option>
+          <option value="3">周三</option>
+          <option value="4">周四</option>
+          <option value="5">周五</option>
+          <option value="6">周六</option>
+          <option value="7">周日</option>
+        </select>
+      </td>
+      <td style="padding:4px;border:1px solid #E5E7EB">
+        <div style="display:flex;gap:2px;align-items:center">
+          <input type="time" class="ai-edit-start" data-idx="${idx}" value="${c.start_time||'08:00'}" style="width:70px;padding:4px;border:1px solid #D1D5DB;border-radius:4px;font-size:11px">
+          <span style="color:#999">-</span>
+          <input type="time" class="ai-edit-end" data-idx="${idx}" value="${c.end_time||'09:40'}" style="width:70px;padding:4px;border:1px solid #D1D5DB;border-radius:4px;font-size:11px">
+        </div>
+      </td>
+      <td style="padding:4px;border:1px solid #E5E7EB">
+        <input type="text" class="ai-edit-weeks" data-idx="${idx}" value="${c.weeks||'1-16'}" style="width:100%;padding:4px 6px;border:1px solid #D1D5DB;border-radius:4px;font-size:12px;color:var(--primary)">
+      </td>
+      <td style="padding:4px;border:1px solid #E5E7EB">
+        <input type="text" class="ai-edit-loc" data-idx="${idx}" value="${(c.location||"").replace(/"/g,'&quot;')}" style="width:100%;padding:4px 6px;border:1px solid #D1D5DB;border-radius:4px;font-size:12px">
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    // 设置星期下拉框默认值
+    const daySel = tr.querySelector('.ai-edit-day');
+    if (c.day_of_week) daySel.value = c.day_of_week;
+  });
+
+  // 绑定编辑事件
+  $$(".ai-course-check").forEach(cb=>{
+    cb.addEventListener("change",(e)=>{
+      const idx=parseInt(e.target.dataset.idx);
+      aiPreviewData[idx]._checked = e.target.checked;
+    });
+  });
+  $$(".ai-edit-name").forEach(inp=>{
+    inp.addEventListener("input",(e)=>{
+      const idx=parseInt(e.target.dataset.idx);
+      aiPreviewData[idx].name = e.target.value;
+    });
+  });
+  $$(".ai-edit-day").forEach(sel=>{
+    sel.addEventListener("change",(e)=>{
+      const idx=parseInt(e.target.dataset.idx);
+      aiPreviewData[idx].day_of_week = parseInt(e.target.value);
+    });
+  });
+  $$(".ai-edit-start").forEach(inp=>{
+    inp.addEventListener("input",(e)=>{
+      const idx=parseInt(e.target.dataset.idx);
+      aiPreviewData[idx].start_time = e.target.value;
+    });
+  });
+  $$(".ai-edit-end").forEach(inp=>{
+    inp.addEventListener("input",(e)=>{
+      const idx=parseInt(e.target.dataset.idx);
+      aiPreviewData[idx].end_time = e.target.value;
+    });
+  });
+  $$(".ai-edit-weeks").forEach(inp=>{
+    inp.addEventListener("input",(e)=>{
+      const idx=parseInt(e.target.dataset.idx);
+      aiPreviewData[idx].weeks = e.target.value;
+    });
+  });
+  $$(".ai-edit-loc").forEach(inp=>{
+    inp.addEventListener("input",(e)=>{
+      const idx=parseInt(e.target.dataset.idx);
+      aiPreviewData[idx].location = e.target.value;
+    });
+  });
+
+  // 点击表头全选/反选
+  const thCheckbox = $("#ai-check-all");
+  if (thCheckbox) {
+    thCheckbox.addEventListener("change", (e) => {
+      const checked = e.target.checked;
+      $$(".ai-course-check").forEach(cb => {
+        cb.checked = checked;
+        const idx = parseInt(cb.dataset.idx);
+        aiPreviewData[idx]._checked = checked;
+      });
+    });
+  }
+}
+
+$("#btn-show-raw").addEventListener("click",()=>{
+  const raw=$("#ai-raw-text");
+  raw.style.display=raw.style.display==="none"?"block":"none";
+});
+
+$("#btn-confirm-ai").addEventListener("click",async ()=>{
+  const selected = aiPreviewData.filter(c => c._checked);
+  if(!selected.length){ notify("请至少选择一门课程","error"); return; }
+
+  // 过滤掉内部字段
+  const courses = selected.map(c => {
+    const {_checked, ...rest} = c;
+    return rest;
+  });
+
+  await jsonReq("/api/courses/ai-confirm",{method:"POST",body:JSON.stringify({courses})});
+  notify(`已导入 ${selected.length} 门课程`);
+  closeModal("modal-ai-preview");
+  refreshAll();
 });
 
 function showModal(id){ const el=$("#"+id); if(el) el.classList.add("show"); }
@@ -628,6 +844,8 @@ $("#td-replan").addEventListener("click",async ()=>{
 
 async function renderCourses(){
   const list=await jsonReq("/api/courses",{method:"GET"});
+  const sem=await jsonReq("/api/semester",{method:"GET"});
+  const currentWeek=sem.current_week||1;
   $("#course-count").textContent = list.length?"共 "+list.length+" 节":"";
   const box=$("#course-list"); box.innerHTML="";
   if(!list.length){
@@ -638,15 +856,39 @@ async function renderCourses(){
   const wd=["","周一","周二","周三","周四","周五","周六","周日"];
   list.sort((a,b)=>a.day_of_week-b.day_of_week||a.start_time.localeCompare(b.start_time));
   list.forEach(c=>{
+    const weeks=c.weeks||"1-16";
+    const isActive=isWeekActive(weeks,currentWeek);
     const row=document.createElement("div");
-    row.style.cssText="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #F3F4F6;";
+    row.style.cssText=`display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #F3F4F6;opacity:${isActive?1:0.5};${isActive?"":"text-decoration:line-through"}`;
     const left=document.createElement("div"); left.style.flex="1";
-    left.innerHTML=`<div style="font-weight:600;font-size:14px">${c.name}</div><div style="font-size:12px;color:var(--sub)">${wd[c.day_of_week]} ${c.start_time}-${c.end_time} · ${c.location||"未填"}</div>`;
+    left.innerHTML=`
+      <div style="font-weight:600;font-size:14px">${c.name} ${isActive?"":"(已过周)"}</div>
+      <div style="font-size:12px;color:var(--sub)">${wd[c.day_of_week]} ${c.start_time}-${c.end_time} · ${c.location||"未填"} · <span style="color:${isActive?"var(--primary)":"var(--sub)"}">${weeks}周</span></div>
+    `;
     const del=document.createElement("button"); del.textContent="删除";
     del.style.cssText="background:#FEE2E2;color:#B91C1C;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:12px;";
     del.addEventListener("click",async ()=>{ await jsonReq("/api/courses/"+c.id,{method:"DELETE"}); refreshAll(); });
     row.appendChild(left); row.appendChild(del); box.appendChild(row);
   });
+}
+
+function isWeekActive(weeksStr,currentWeek){
+  if(!weeksStr) return true;
+  try{
+    const parts=weeksStr.replace("，",",").split(",");
+    for(const part of parts){
+      const p=part.trim();
+      if(p.includes("-")){
+        const [start,end]=p.split("-",2);
+        const sw=parseInt(start);
+        const ew=parseInt(end);
+        if(sw<=currentWeek&&currentWeek<=ew) return true;
+      }else{
+        if(parseInt(p)===currentWeek) return true;
+      }
+    }
+    return false;
+  }catch(e){ return true; }
 }
 
 async function loadRoutine(){
@@ -665,6 +907,197 @@ $("#btn-save-routine").addEventListener("click",async ()=>{
   })});
   notify("作息已保存");
 });
+
+// 默认课程作息时间（大学常见的 10 大节）
+const DEFAULT_COURSE_TIMES = [
+  { period: 1, start: "08:00", end: "08:45" },
+  { period: 2, start: "08:55", end: "09:40" },
+  { period: 3, start: "10:00", end: "10:45" },
+  { period: 4, start: "10:55", end: "11:40" },
+  { period: 5, start: "14:00", end: "14:45" },
+  { period: 6, start: "14:55", end: "15:40" },
+  { period: 7, start: "16:00", end: "16:45" },
+  { period: 8, start: "16:55", end: "17:40" },
+  { period: 9, start: "19:00", end: "19:45" },
+  { period: 10, start: "19:55", end: "20:40" },
+];
+
+let courseTimes = [...DEFAULT_COURSE_TIMES];
+let aiPreviewBackup = [];
+
+function loadCourseTimes(){
+  const saved = localStorage.getItem("courseTimes");
+  if(saved){
+    try{ courseTimes = JSON.parse(saved); }catch(e){ courseTimes = [...DEFAULT_COURSE_TIMES]; }
+  }
+}
+
+function saveCourseTimes(){
+  localStorage.setItem("courseTimes", JSON.stringify(courseTimes));
+}
+
+function renderCourseTimes(){
+  const box = $("#course-time-list");
+  box.innerHTML = "";
+  courseTimes.forEach((ct,idx)=>{
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:6px;align-items:center;margin-bottom:6px";
+    row.innerHTML = `
+      <span style="width:50px;font-size:13px;color:var(--sub);text-align:right">第${ct.period}节</span>
+      <input type="time" class="ct-start" data-idx="${idx}" value="${ct.start}" style="flex:1;padding:4px 6px;border:1px solid #D1D5DB;border-radius:4px;font-size:12px">
+      <span style="color:#999">-</span>
+      <input type="time" class="ct-end" data-idx="${idx}" value="${ct.end}" style="flex:1;padding:4px 6px;border:1px solid #D1D5DB;border-radius:4px;font-size:12px">
+      <button class="btn btn-secondary ct-del" data-idx="${idx}" style="padding:2px 8px;font-size:12px">×</button>
+    `;
+    box.appendChild(row);
+  });
+
+  $$(".ct-start").forEach(inp=>{
+    inp.addEventListener("change", e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      courseTimes[idx].start = e.target.value;
+      saveCourseTimes();
+    });
+  });
+  $$(".ct-end").forEach(inp=>{
+    inp.addEventListener("change", e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      courseTimes[idx].end = e.target.value;
+      saveCourseTimes();
+    });
+  });
+  $$(".ct-del").forEach(btn=>{
+    btn.addEventListener("click", e=>{
+      const idx = parseInt(e.target.dataset.idx);
+      courseTimes.splice(idx, 1);
+      courseTimes.forEach((ct,i)=> ct.period = i+1);
+      saveCourseTimes();
+      renderCourseTimes();
+    });
+  });
+}
+
+$("#btn-add-course-time").addEventListener("click", ()=>{
+  const last = courseTimes[courseTimes.length-1];
+  const nextPeriod = last ? last.period + 1 : 1;
+  courseTimes.push({ period: nextPeriod, start: "08:00", end: "08:45" });
+  saveCourseTimes();
+  renderCourseTimes();
+});
+
+$("#btn-reset-course-time").addEventListener("click", ()=>{
+  courseTimes = [...DEFAULT_COURSE_TIMES];
+  saveCourseTimes();
+  renderCourseTimes();
+  notify("已恢复默认课程作息");
+});
+
+// 时间工具函数
+function timeToMin(t){
+  const [h,m] = t.split(":").map(Number);
+  return h*60+m;
+}
+function minToTime(mins){
+  const h = Math.floor(mins/60);
+  const m = mins%60;
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
+
+// 从课程时间推断节次
+function guessPeriod(startTime, endTime){
+  if(!courseTimes.length) return null;
+  const sMin = timeToMin(startTime);
+  const eMin = timeToMin(endTime);
+  let best = null, bestDiff = Infinity;
+  for(let i=0;i<courseTimes.length;i++){
+    for(let j=i;j<courseTimes.length;j++){
+      const cs = timeToMin(courseTimes[i].start);
+      const ce = timeToMin(courseTimes[j].end);
+      const diff = Math.abs(cs-sMin) + Math.abs(ce-eMin);
+      if(diff < bestDiff){ bestDiff = diff; best = {startPeriod: i+1, endPeriod: j+1}; }
+    }
+  }
+  return bestDiff < 60 ? best : null;
+}
+
+// 按节次批量应用时间
+function batchApplyPeriod(){
+  aiPreviewBackup = aiPreviewData.map(c=>({...c}));
+  let changed = 0;
+  aiPreviewData.forEach((c,idx)=>{
+    if(!c._checked) return;
+    const p = guessPeriod(c.start_time, c.end_time);
+    if(p && courseTimes[p.startPeriod-1] && courseTimes[p.endPeriod-1]){
+      c.start_time = courseTimes[p.startPeriod-1].start;
+      c.end_time = courseTimes[p.endPeriod-1].end;
+      changed++;
+      // 更新表格输入框
+      const startInp = document.querySelector(`.ai-edit-start[data-idx="${idx}"]`);
+      const endInp = document.querySelector(`.ai-edit-end[data-idx="${idx}"]`);
+      if(startInp) startInp.value = c.start_time;
+      if(endInp) endInp.value = c.end_time;
+    }
+  });
+  notify(`已调整 ${changed} 门课程的时间`);
+}
+
+// 批量偏移时间
+function batchShiftTime(minutes){
+  aiPreviewBackup = aiPreviewData.map(c=>({...c}));
+  let changed = 0;
+  aiPreviewData.forEach((c,idx)=>{
+    if(!c._checked) return;
+    const s = timeToMin(c.start_time) + minutes;
+    const e = timeToMin(c.end_time) + minutes;
+    if(s>=0 && e<=24*60){
+      c.start_time = minToTime(s);
+      c.end_time = minToTime(e);
+      changed++;
+      const startInp = document.querySelector(`.ai-edit-start[data-idx="${idx}"]`);
+      const endInp = document.querySelector(`.ai-edit-end[data-idx="${idx}"]`);
+      if(startInp) startInp.value = c.start_time;
+      if(endInp) endInp.value = c.end_time;
+    }
+  });
+  notify(`已偏移 ${changed} 门课程的时间（${minutes>0?"+":""}${minutes}分钟）`);
+}
+
+// 撤销批量修改
+function batchReset(){
+  if(!aiPreviewBackup.length){ notify("没有可撤销的操作", "error"); return; }
+  aiPreviewData.forEach((c,idx)=>{
+    const bk = aiPreviewBackup[idx];
+    if(bk){
+      c.name = bk.name;
+      c.day_of_week = bk.day_of_week;
+      c.start_time = bk.start_time;
+      c.end_time = bk.end_time;
+      c.weeks = bk.weeks;
+      c.location = bk.location;
+      c._checked = bk._checked;
+      const nameInp = document.querySelector(`.ai-edit-name[data-idx="${idx}"]`);
+      const daySel = document.querySelector(`.ai-edit-day[data-idx="${idx}"]`);
+      const startInp = document.querySelector(`.ai-edit-start[data-idx="${idx}"]`);
+      const endInp = document.querySelector(`.ai-edit-end[data-idx="${idx}"]`);
+      const weeksInp = document.querySelector(`.ai-edit-weeks[data-idx="${idx}"]`);
+      const locInp = document.querySelector(`.ai-edit-loc[data-idx="${idx}"]`);
+      const check = document.querySelector(`.ai-course-check[data-idx="${idx}"]`);
+      if(nameInp) nameInp.value = c.name;
+      if(daySel) daySel.value = c.day_of_week;
+      if(startInp) startInp.value = c.start_time;
+      if(endInp) endInp.value = c.end_time;
+      if(weeksInp) weeksInp.value = c.weeks;
+      if(locInp) locInp.value = c.location;
+      if(check) check.checked = c._checked;
+    }
+  });
+  notify("已撤销批量修改");
+}
+
+$("#btn-batch-period").addEventListener("click", batchApplyPeriod);
+$("#btn-batch-shift-left").addEventListener("click", ()=>batchShiftTime(-10));
+$("#btn-batch-shift-right").addEventListener("click", ()=>batchShiftTime(10));
+$("#btn-batch-reset").addEventListener("click", batchReset);
 
 async function loadSemester(){
   const s=await jsonReq("/api/semester",{method:"GET"});
@@ -776,9 +1209,9 @@ async function loadChatHistory(){
   if(!list.length) appendChat("ai","你好！我是规划助手，可以帮你：\n· 重排某个任务的步骤\n· 添加/删除步骤\n· 调整截止日期\n· 新建任务\n试试对我说：「重排任务 1」");
 }
 
-function refreshAll(){ renderWeekCalendar(); renderToday(); renderTasks(); renderCourses(); renderPomoStats(); renderPomoTime(); loadSemester(); }
+function refreshAll(){ renderWeekCalendar(); renderToday(); renderTasks(); renderCourses(); renderPomoStats(); renderPomoTime(); loadSemester(); renderCourseTimes(); }
 try{ if("Notification" in window && Notification.permission==="default") Notification.requestPermission(); }catch(e){}
-(async ()=>{ await loadRoutine(); refreshAll(); })();
+(async ()=>{ loadCourseTimes(); await loadRoutine(); refreshAll(); })();
 </script>
 </body>
 </html>
