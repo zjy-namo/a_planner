@@ -35,11 +35,11 @@ pip install -r requirements.txt
 # 复制 .env 并写入你的 DeepSeek API Key：
 echo "DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxx" > .env
 
-# 4. 启动（手机访问请使用本机局域网 IP，例如 http://192.168.x.x:5000）
+# 4. 启动（手机访问请使用本机局域网 IP，例如 http://192.168.x.x:9090）
 python app.py
 ```
 
-启动后，使用浏览器（桌面或手机）访问 `http://<host>:5000/`。
+启动后，使用浏览器（桌面或手机）访问 `http://<host>:9090/`。
 
 ## 项目结构
 
